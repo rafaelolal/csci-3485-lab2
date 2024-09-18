@@ -1,34 +1,30 @@
 import warnings
-
-from sklearn.exceptions import ConvergenceWarning
-
-# Ignoring convergence warnings to not interrupt the progress bar
-warnings.filterwarnings("ignore", category=ConvergenceWarning)
-
 from time import time
 
 import matplotlib.pyplot as plt
 import numpy as np
+from joblib import Parallel, delayed
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.neural_network import MLPClassifier
 from tqdm import tqdm
-
+from sklearn.model_selection import train_test_split
 from data_generators import aniso, blob
 from read_and_write import write_to_file
 
 # Default values
-DATA_SIZE = 500
+DATA_SIZE = 5000
 NUMBER_OF_FEATURES = 2
 RANDOM_STATE = 1
 
 # Value ranges
 TYPES_OF_DATA = [blob, aniso]
-MIN_NUMBER_OF_CLASSES = 2
-MAX_NUMBER_OF_CLASSES = 4
+MIN_NUMBER_OF_CLASSES = 7
+MAX_NUMBER_OF_CLASSES = 7
 
 MIN_NUMBER_OF_LAYERS = 1
-MAX_NUMBER_OF_LAYERS = 10
+MAX_NUMBER_OF_LAYERS = 40
 MIN_NUMBER_OF_UNITS = 1
-MAX_NUMBER_OF_UNITS = 10
+MAX_NUMBER_OF_UNITS = 40
 
 total_ops = (
     len(TYPES_OF_DATA)
@@ -37,42 +33,50 @@ total_ops = (
     * (MAX_NUMBER_OF_UNITS - MIN_NUMBER_OF_UNITS + 1)
 )
 
-# Initializing progress bar and timer
-pbar = tqdm(total=total_ops)
+
+def run_experiment(type_of_data, classes, layers, units):
+    start_time = time()
+
+    X, y = type_of_data(
+        DATA_SIZE, classes, NUMBER_OF_FEATURES, RANDOM_STATE
+    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y)
+
+    network = MLPClassifier(hidden_layer_sizes=(units,) * layers, solver="lbfgs")
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+        network.fit(X_train, y_train)
+    score = network.score(X_test, y_test)
+
+    return (
+        type_of_data.__name__,
+        classes,
+        layers,
+        units,
+        score,
+        time() - start_time,
+    )
+
+
 master_start_time = time()
 
-# Running experiments
-results = []
-for data_type in TYPES_OF_DATA:
-    for classes in range(MIN_NUMBER_OF_CLASSES, MAX_NUMBER_OF_CLASSES + 1):
-        X_train, Y_train = data_type(
-            DATA_SIZE, classes, NUMBER_OF_FEATURES, RANDOM_STATE
-        )
-        X_test, Y_test = data_type(
-            DATA_SIZE, classes, NUMBER_OF_FEATURES, RANDOM_STATE
-        )
+# Running experiments in parallel
+results = Parallel(n_jobs=-1)(
+    delayed(run_experiment)(type_of_data, classes, layers, units)
+    for type_of_data, classes, layers, units in tqdm(
+        (
+            (type_of_data, classes, layers, units)
+            for type_of_data in TYPES_OF_DATA
+            for classes in range(
+                MIN_NUMBER_OF_CLASSES, MAX_NUMBER_OF_CLASSES + 1
+            )
+            for layers in range(MIN_NUMBER_OF_LAYERS, MAX_NUMBER_OF_LAYERS + 1)
+            for units in range(MIN_NUMBER_OF_UNITS, MAX_NUMBER_OF_UNITS + 1)
+        ),
+        total=total_ops,
+    )
+)
 
-        for layers in range(MIN_NUMBER_OF_LAYERS, MAX_NUMBER_OF_LAYERS + 1):
-            for units in range(MIN_NUMBER_OF_UNITS, MAX_NUMBER_OF_UNITS + 1):
-                start_time = time()
-
-                network = MLPClassifier(hidden_layer_sizes=(units,) * layers)
-                network.fit(X_train, Y_train)
-                score = network.score(X_test, Y_test)
-
-                total_time = time() - start_time
-
-                results.append(
-                    (
-                        data_type.__name__,
-                        classes,
-                        layers,
-                        units,
-                        score,
-                        total_time,
-                    )
-                )
-                pbar.update(1)
 
 # Converting results to a np array to easily access the columns
 print("Processing results array")
@@ -89,7 +93,6 @@ results_array = np.array(
 )
 
 master_end_time = time()
-pbar.close()
 print(f"Total time: {master_end_time - master_start_time}")
 
 write_to_file(results, "rafael_results.txt")
