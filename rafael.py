@@ -1,82 +1,121 @@
 import warnings
-
-from sklearn.exceptions import ConvergenceWarning
-
-# Ignoring convergence warnings to not interrupt the progress bar
-warnings.filterwarnings("ignore", category=ConvergenceWarning)
-
 from time import time
 
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.exceptions import ConvergenceWarning
+from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 from tqdm import tqdm
 
 from data_generators import aniso, blob
 from read_and_write import write_to_file
 
+# Ignoring convergence warnings to not mess up the progress bar
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
 # Default values
-DATA_SIZE = 500
+DATA_SIZE = 1000
 NUMBER_OF_FEATURES = 2
 RANDOM_STATE = 1
 
-# Value ranges
-TYPES_OF_DATA = [blob, aniso]
-MIN_NUMBER_OF_CLASSES = 4
-MAX_NUMBER_OF_CLASSES = 4
+# Dataset ranges
+DATA_TYPES = [blob, aniso]
+MIN_NUMBER_OF_CLASSES = 2
+MAX_NUMBER_OF_CLASSES = 7
 
+# Network architecture ranges
 MIN_NUMBER_OF_LAYERS = 1
-MAX_NUMBER_OF_LAYERS = 10
+MAX_NUMBER_OF_LAYERS = 4
 MIN_NUMBER_OF_UNITS = 1
-MAX_NUMBER_OF_UNITS = 10
+MAX_NUMBER_OF_UNITS = 4
 
-total_ops = (
-    len(TYPES_OF_DATA)
-    * (MAX_NUMBER_OF_CLASSES - MIN_NUMBER_OF_CLASSES + 1)
-    * (MAX_NUMBER_OF_LAYERS - MIN_NUMBER_OF_LAYERS + 1)
-    * (MAX_NUMBER_OF_UNITS - MIN_NUMBER_OF_UNITS + 1)
+# Operations counts
+total_datasets = len(DATA_TYPES) * (
+    MAX_NUMBER_OF_CLASSES - MIN_NUMBER_OF_CLASSES + 1
+)
+total_networks = (MAX_NUMBER_OF_LAYERS - MIN_NUMBER_OF_LAYERS + 1) * (
+    MAX_NUMBER_OF_UNITS - MIN_NUMBER_OF_UNITS + 1
 )
 
-# Initializing progress bar and timer
-pbar = tqdm(total=total_ops)
+# Initializing timer
 master_start_time = time()
 
+# Building datasets
+data_pbar = tqdm(total=total_datasets, desc="Building Datasets")
+
+datasets = []
+for data_type in DATA_TYPES:
+    for number_of_classes in range(
+        MIN_NUMBER_OF_CLASSES, MAX_NUMBER_OF_CLASSES + 1
+    ):
+        X, y = data_type(
+            DATA_SIZE,
+            number_of_classes,
+            NUMBER_OF_FEATURES,
+            RANDOM_STATE,
+        )
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y)
+
+        datasets.append(
+            (
+                data_type.__name__,
+                number_of_classes,
+                X_train,
+                X_test,
+                y_train,
+                y_test,
+            )
+        )
+        data_pbar.update(1)
+
+data_pbar.close()
+
 # Running experiments
+experiment_pbar = tqdm(
+    total=total_networks * total_datasets, desc="Running Experiments"
+)
+
 results = []
-for data_type in TYPES_OF_DATA:
-    for classes in range(MIN_NUMBER_OF_CLASSES, MAX_NUMBER_OF_CLASSES + 1):
-        X_train, Y_train = data_type(
-            DATA_SIZE, classes, NUMBER_OF_FEATURES, RANDOM_STATE
-        )
-        X_test, Y_test = data_type(
-            DATA_SIZE, classes, NUMBER_OF_FEATURES, RANDOM_STATE
-        )
+for layers in range(MIN_NUMBER_OF_LAYERS, MAX_NUMBER_OF_LAYERS + 1):
+    for units in range(MIN_NUMBER_OF_UNITS, MAX_NUMBER_OF_UNITS + 1):
+        network = MLPClassifier(hidden_layer_sizes=(units,) * layers)
 
-        for layers in range(MIN_NUMBER_OF_LAYERS, MAX_NUMBER_OF_LAYERS + 1):
-            for units in range(MIN_NUMBER_OF_UNITS, MAX_NUMBER_OF_UNITS + 1):
-                start_time = time()
+        for dataset in datasets:
+            start_time = time()
 
-                network = MLPClassifier(hidden_layer_sizes=(units,) * layers)
-                network.fit(X_train, Y_train)
-                score = network.score(X_test, Y_test)
+            X_train, X_test, y_train, y_test = (
+                dataset[2],
+                dataset[3],
+                dataset[4],
+                dataset[5],
+            )
 
-                total_time = time() - start_time
+            network.fit(X_train, y_train)
+            score = network.score(X_test, y_test)
 
-                results.append(
-                    (
-                        data_type.__name__,
-                        classes,
-                        layers,
-                        units,
-                        score,
-                        total_time,
-                    )
+            results.append(
+                (
+                    dataset[0],
+                    dataset[1],
+                    layers,
+                    units,
+                    score,
+                    time() - start_time,
                 )
-                pbar.update(1)
+            )
+
+            experiment_pbar.update(1)
+
+experiment_pbar.close()
+print(f"Total time: {time() - master_start_time}")
+
+# Writing results to file in case of somehow losing the data
+write_to_file(results, "rafael_results.txt")
 
 # Converting results to a np array to easily access the columns
-print("Processing results array")
-results_array = np.array(
+results = np.array(
     results,
     dtype=[
         ("type_of_data", "U50"),
@@ -88,19 +127,16 @@ results_array = np.array(
     ],
 )
 
-master_end_time = time()
-pbar.close()
-print(f"Total time: {master_end_time - master_start_time}")
 
-write_to_file(results, "rafael_results.txt")
-
-# Plotting each heatmap
-for data_type in TYPES_OF_DATA:
-    for classes in range(MIN_NUMBER_OF_CLASSES, MAX_NUMBER_OF_CLASSES + 1):
-        mask = (results_array["type_of_data"] == data_type.__name__) & (
-            results_array["classes"] == classes
+# Plotting heatmaps
+for data_type in DATA_TYPES:
+    for number_of_classes in range(
+        MIN_NUMBER_OF_CLASSES, MAX_NUMBER_OF_CLASSES + 1
+    ):
+        mask = (results["type_of_data"] == data_type.__name__) & (
+            results["classes"] == number_of_classes
         )
-        filtered_results = results_array[mask]
+        filtered_results = results[mask]
 
         layers = filtered_results["layers"]
         units = filtered_results["units"]
@@ -119,7 +155,7 @@ for data_type in TYPES_OF_DATA:
         plt.figure(figsize=(10, 10))
         plt.imshow(
             score_2d,
-            cmap="viridis",
+            cmap="magma",
             extent=(
                 MIN_NUMBER_OF_LAYERS,
                 MAX_NUMBER_OF_LAYERS,
@@ -128,11 +164,13 @@ for data_type in TYPES_OF_DATA:
             ),
             origin="lower",
             aspect="auto",
+            vmin=0,
+            vmax=1,
         )
         plt.colorbar(label="Score")
         plt.xlabel("Number of Layers")
         plt.ylabel("Number of Units")
         plt.title(
-            f"Score vs. Number of Layers and Units ({data_type.__name__}, {classes} Classes)"
+            f"Score vs. Number of Layers and Units ({data_type.__name__}, {number_of_classes} Classes)"
         )
         plt.show()
