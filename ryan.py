@@ -122,7 +122,7 @@ aggregated_results = aggregate_results(results)
 # Heatmap function
 def plot_heatmap(data, row_labels, col_labels, title, xlabel, ylabel):
     plt.figure(figsize=(10, 6))
-    sns.heatmap(data, xticklabels=col_labels, yticklabels=row_labels, cmap="viridis", cbar=True)
+    sns.heatmap(data, xticklabels=col_labels, yticklabels=row_labels, cmap="viridis", cbar=True, vmin=0, vmax=1)
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
