@@ -17,10 +17,10 @@ from tqdm import tqdm
 from data_generators import aniso, blob
 from read_and_write import write_to_file
 
-# Ignoring convergence warnings to not mess up the progress bar
+# ignoring convergence warnings to not mess up the progress bar
 filterwarnings("ignore", category=ConvergenceWarning)
 
-# Default values
+# default values
 FOLDER_NAME = "layers_units"
 DATA_SIZE = 500  # barely any difference between 500-5000 data points
 NUMBER_OF_FEATURES = 2
@@ -28,18 +28,18 @@ RANDOM_STATE = 1
 
 print("Press enter for default values")
 
-# Dataset ranges
+# dataset ranges
 DATA_TYPES = [blob, aniso]
 MIN_NUMBER_OF_CLASSES = int(input("MIN_NUMBER_OF_CLASSES or 2: ") or 2)
 MAX_NUMBER_OF_CLASSES = int(input("MAX_NUMBER_OF_CLASSES or 7: ") or 7)
 
-# Network architecture ranges
+# network architecture ranges
 MIN_NUMBER_OF_LAYERS = int(input("MIN_NUMBER_OF_LAYERS or 1: ") or 1)
 MAX_NUMBER_OF_LAYERS = int(input("MAX_NUMBER_OF_LAYERS or 40: ") or 40)
 MIN_NUMBER_OF_UNITS = int(input("MIN_NUMBER_OF_UNITS or 1: ") or 1)
 MAX_NUMBER_OF_UNITS = int(input("MAX_NUMBER_OF_UNITS or 40: ") or 40)
 
-# Operations counts
+# operations counts
 TOTAL_DATASETS = len(DATA_TYPES) * (
     MAX_NUMBER_OF_CLASSES - MIN_NUMBER_OF_CLASSES + 1
 )
@@ -208,7 +208,7 @@ def download_heat_maps(results: list[tuple]) -> None:
             print(f"Heatmap saved as {filepath}")
 
 
-# Main
+# main
 
 master_start_time = time()
 
