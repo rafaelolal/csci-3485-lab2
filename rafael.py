@@ -74,6 +74,7 @@ for data_type in TYPES_OF_DATA:
                 )
                 pbar.update(1)
 
+# Converting results to a np array to easily access the columns
 print("Processing results array")
 results_array = np.array(
     results,
@@ -93,7 +94,7 @@ print(f"Total time: {master_end_time - master_start_time}")
 
 write_to_file(results, "rafael_results.txt")
 
-# Plotting
+# Plotting each heatmap
 for data_type in TYPES_OF_DATA:
     for classes in range(MIN_NUMBER_OF_CLASSES, MAX_NUMBER_OF_CLASSES + 1):
         mask = (results_array["type_of_data"] == data_type.__name__) & (
