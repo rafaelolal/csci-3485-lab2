@@ -126,7 +126,7 @@ def plot_heatmap(data, row_labels, col_labels, title, xlabel, ylabel):
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.xticks(rotation=45, fontsize=8)
+    plt.xticks(rotation=45, fontsize=3)
     plt.tight_layout()
     plt.show()
 
