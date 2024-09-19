@@ -6,4 +6,4 @@ Mac: `python3 -m venv env`
 `pip install -r requirements.txt`
 ### Execute
 1. `python rafael.py`
-2. `python [ryan].py`
+2. `python ryan.py`
