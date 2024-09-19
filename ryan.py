@@ -23,16 +23,16 @@ RANDOM_STATE = 1
 # Dataset ranges
 DATA_TYPES = [blob, aniso]
 MIN_NUMBER_OF_CLASSES = 2
-MAX_NUMBER_OF_CLASSES = 7
+MAX_NUMBER_OF_CLASSES = 3
 
 # Network architecture fixed values
-NUMBER_OF_LAYERS = 4
-NUMBER_OF_UNITS = 4
+NUMBER_OF_LAYERS = 10    # 10+ layers based on results of network architecture tests
+NUMBER_OF_UNITS = 5     # Lower units(1-5) based on results of network architecture tests
 
 # Learning rate ranges and solvers
 MIN_LEARNING_RATE_INIT = 0.001
 MAX_LEARNING_RATE_INIT = 0.991
-LEARNING_RATE_STEP_SIZE = 0.03
+LEARNING_RATE_STEP_SIZE = 0.01
 SOLVERS = ['sgd', 'adam']
 LEARNING_RATE_STRATEGIES = ['constant', 'invscaling', 'adaptive']
 
@@ -126,7 +126,7 @@ def plot_heatmap(data, row_labels, col_labels, title, xlabel, ylabel):
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=45, fontsize=8)
     plt.tight_layout()
     plt.show()
 
@@ -158,7 +158,7 @@ def plot_lr_strategy_comparison(aggregated_results, solver):
     plot_heatmap(heatmap_data, lr_strategies, np.round(np.arange(MIN_LEARNING_RATE_INIT, MAX_LEARNING_RATE_INIT, LEARNING_RATE_STEP_SIZE), 3),
                  f"Learning Rate Strategies ({solver.capitalize()} Solver)", "Initial Learning Rate", "Learning Rate Strategy")
 
-# Plot the requested visualizations
+# Plot visualizations
 plot_solver_comparison(aggregated_results, 'constant')
 plot_solver_comparison(aggregated_results, 'invscaling')
 plot_solver_comparison(aggregated_results, 'adaptive')
